@@ -2,3 +2,6 @@
 obj/
 Properties
 *.csproj
+bin/
+*.Designer.cs
+*.resx

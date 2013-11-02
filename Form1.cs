@@ -31,7 +31,7 @@ namespace Proxy
             }
         }
 
-        void SetTextHandler(OnTextChange e)
+       public void SetTextHandler(OnTextChange e)
         {
             SetText(e.GetText());
         }
@@ -40,6 +40,7 @@ namespace Proxy
         {
             
             _hp.Start();
+            HealthChecker.checkHealth(servers.Text.Split(','));
             _hp.HandleClient();
             startProxy.Enabled = false;
             stopProxy.Enabled = true;
@@ -51,5 +52,6 @@ namespace Proxy
             startProxy.Enabled = true;
             stopProxy.Enabled = false;
         }
+
     }
 }

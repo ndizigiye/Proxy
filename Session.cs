@@ -5,7 +5,8 @@ using System.Text;
 
 namespace Proxy
 {
-    class PersistenceManager
+    class Session
     {
+        public static Dictionary <string, string> sessionTable = new Dictionary<string, string>();
     }
 }

@@ -16,38 +16,46 @@ namespace Proxy
 
         public static List<Server> availableServer;
 
-        public static void checkHealth(string[] servers){
-
-            var parameterizedThread = new ParameterizedThreadStart(checkHealthInternal);
+        public static void checkHealthInternal(string[] servers)
+        {
+            var parameterizedThread = new ParameterizedThreadStart(checkHealth);
             var checkHealthThread = new Thread(parameterizedThread);
             checkHealthThread.Start(servers);
         }
+        public static void checkHealth(object o){
 
-        public static void checkHealthInternal(object o){
+            var servers = (string[])o;
+            while(true){
 
-            var servers = (string[]) o;
-
-            foreach(var server in servers){
+                foreach(var server in servers){
 
                 var serverAddress = server.Split(':')[0].Trim();
                 var port = server.Split(':')[1].Trim();
-                string[] serverAddressAndPort = {serverAddress,port};
+                string[] serverAddressAndPort = { serverAddress, port };
 
                 var parameterizedThread = new ParameterizedThreadStart(PingServer);
-                var pingThread = new Thread(parameterizedThread);
-                pingThread.Start(serverAddressAndPort);
+                var PingServerThread = new Thread(parameterizedThread);
+                PingServerThread.Start(serverAddressAndPort);
+                }
+                Thread.Sleep(5000);
             }
-
         }
 
         public static void PingServer(object o)
         {
             var serverAddressAndPort = (string[])o;
-
             var serverAddress = serverAddressAndPort[0];
             var serverPort = Convert.ToInt32(serverAddressAndPort[1]);
-            Server server = new Server(serverAddress,serverPort);
+            Server server = new Server(serverAddress, serverPort);
             var isActive = server.Ping();
+            if (isActive)
+            {
+                Debug.WriteLine(String.Format("Server http://{0}:{1} is healthy",server.address,server.port));
+            }
+            else
+            {
+                Debug.WriteLine(String.Format("Server http://{0}:{1} is down", server.address, server.port));
+            }
         }
 
     }
@@ -58,8 +66,8 @@ namespace Proxy
     {
         public event OnTextChangeHandler OnTextChangeEvent;
 
-        private string address;
-        private int port;
+        public string address;
+        public int port;
 
         public Server(string address, int port){
             this.address = address;
@@ -67,30 +75,43 @@ namespace Proxy
         }
 
         public bool Ping(){
-
+            var serverIsAlive = false;
+            var responseHeader = "";
             var destServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            var testHeader = String.Format("GET http://{0}:{1}/ HTTP/1.1", address, port);
-            var testHeaderBytes = Encoding.ASCII.GetBytes(testHeader);
-            destServerSocket.Connect(address, port);
-            destServerSocket.Send(testHeaderBytes);
+            var testHeader = String.Format("GET http://{0}:{1} HTTP/1.1" +"\r"+ "\n" +
+                                           "Host: {0}:{1}" + "\r" + "\n" +"\r"+ "\n", address, port);
 
-            var responseBuffer = new byte[1024];
+            var testHeaderBytes = Encoding.ASCII.GetBytes(testHeader);
+            var responseBuffer = new byte[1];
 
             try
             {
+                destServerSocket.Connect(address, port);
+                destServerSocket.Send(testHeaderBytes);
+
                 while (destServerSocket.Receive(responseBuffer) != 0)
                 {
-                    var response = Encoding.ASCII.GetString(responseBuffer);
-                    Debug.Write(Encoding.ASCII.GetString(responseBuffer));
+                    responseHeader += Encoding.ASCII.GetString(responseBuffer);
+                    if (responseHeader.EndsWith("\r\n\r\n"))
+                    {
+                        break;
+                    }
                 }
+
+                if(responseHeader.Length != 0){
+                    serverIsAlive = true;
+                }
+
                 destServerSocket.Disconnect(false);
                 destServerSocket.Dispose();
             }
-            catch (Exception e)
+            catch (SocketException e)
             {
-                OnTextChangeEvent(new OnTextChange(e.Message));
+                serverIsAlive = false;
             }
-            return true;
+            return serverIsAlive;
         }
     }
+
+    
 }

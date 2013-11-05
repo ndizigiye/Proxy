@@ -7,5 +7,8 @@ namespace Proxy
 {
     class NAT
     {
+        //public string trnaslate()
+        //{
+        //}
     }
 }

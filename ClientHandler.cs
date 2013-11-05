@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Windows.Forms;
 
 namespace Proxy
 {
@@ -56,7 +57,10 @@ namespace Proxy
             string requestTempLine = "";
             var requestLines = new List<string>();
             var requestBuffer = new byte[1];
-            var responseBuffer = new byte[1024];
+            var responseBuffer = new byte[1];
+            var responseHeaderFirstPart = "";
+            var responseHeaderSecondPart = "";
+            var responseLines = new List<string>();
             
 
             requestLines.Clear();
@@ -92,9 +96,6 @@ namespace Proxy
                     remotePort = Convert.ToInt32(remoteHost.Split(':')[1]);
                     remoteHost = "localhost";
                 }
-                Debug.WriteLine(remoteHost+" -- "+remotePort);
-                //string requestFile = requestLines[0].Replace("http://", "").Replace(remoteHost, "");
-                //requestLines[0] = requestFile;
 
                 requestPayload = "";
                 foreach (string line in requestLines)
@@ -104,18 +105,26 @@ namespace Proxy
                 }
 
                 var destServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                destServerSocket.Connect(remoteHost, remotePort);
+                var portTest = 80 + Algorithm.AlgorithmChooser();
+                destServerSocket.Connect("localhost", portTest);
 
                 //State 2: Sending New Request Information to Destination Server and Relay Response to Client            
                 destServerSocket.Send(Encoding.ASCII.GetBytes(requestPayload));
-
                 //Console.WriteLine("Begin Receiving Response...");
                 while (destServerSocket.Receive(responseBuffer) != 0)
                 {
-                    //Console.Write(ASCIIEncoding.ASCII.GetString(responseBuffer));
-                   _client.Send(responseBuffer);
-                   Debug.Write(Encoding.ASCII.GetString(responseBuffer));
+                    var responseHeader = Encoding.ASCII.GetString(responseBuffer);
+
+                    if (responseHeader == "\r")
+                    {
+                        Debug.WriteLine("-----Ends with----");
+                    }
+                    var newResponseBuffer = responseBuffer;
+                    //newResponseBuffer = Encoding.ASCII.GetBytes(responseHeader);
+                    //Debug.Write("=="+responseHeader);
+                    _client.Send(newResponseBuffer);
                 }
+                Debug.WriteLine(responseHeaderFirstPart + responseHeaderSecondPart);
                 Debug.WriteLine("finished============================================================");
                 destServerSocket.Disconnect(false);
                 destServerSocket.Dispose();

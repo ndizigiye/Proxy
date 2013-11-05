@@ -14,6 +14,7 @@ namespace Proxy
             _hp = new HttpProxy("127.0.0.1", 9000);
             _hp.OnTextChangeEvent += SetTextHandler;
             stopProxy.Enabled = false;
+            roundRobin.Checked = true;
         }
 
         private void SetText(string text)
@@ -40,7 +41,7 @@ namespace Proxy
         {
             
             _hp.Start();
-            HealthChecker.checkHealth(servers.Text.Split(','));
+            HealthChecker.checkHealthInternal(servers.Text.Split(','));
             _hp.HandleClient();
             startProxy.Enabled = false;
             stopProxy.Enabled = true;
@@ -51,6 +52,21 @@ namespace Proxy
             _hp.Stop();
             startProxy.Enabled = true;
             stopProxy.Enabled = false;
+        }
+
+        private void saveSession_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void roundRobin_CheckedChanged(object sender, EventArgs e)
+        {
+            Algorithm.algorithmName = "roundRobin";
+        }
+
+        private void random_CheckedChanged(object sender, EventArgs e)
+        {
+            Algorithm.algorithmName = "random";
         }
 
     }

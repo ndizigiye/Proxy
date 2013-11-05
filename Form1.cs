@@ -56,7 +56,7 @@ namespace Proxy
 
         private void saveSession_CheckedChanged(object sender, EventArgs e)
         {
-
+            Session.saveSession = saveSession.Checked;
         }
 
         private void roundRobin_CheckedChanged(object sender, EventArgs e)

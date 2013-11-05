@@ -14,7 +14,7 @@ namespace Proxy
     {
         public event OnTextChangeHandler OnTextChangeEvent;
 
-        public static List<Server> availableServer;
+        public static List<Server> activeServers = new List<Server>();
 
         public static void checkHealthInternal(string[] servers)
         {
@@ -48,16 +48,16 @@ namespace Proxy
             var serverPort = Convert.ToInt32(serverAddressAndPort[1]);
             Server server = new Server(serverAddress, serverPort);
             var isActive = server.Ping();
-            if (isActive)
+            var result = activeServers.Find(item => item.port == server.port);
+            if (isActive && result == null)
             {
-                Debug.WriteLine(String.Format("Server http://{0}:{1} is healthy",server.address,server.port));
+                activeServers.Add(server);
             }
-            else
+            else if (!isActive && result != null)
             {
-                Debug.WriteLine(String.Format("Server http://{0}:{1} is down", server.address, server.port));
+                activeServers.Remove(result);
             }
         }
-
     }
 
         
@@ -66,8 +66,8 @@ namespace Proxy
     {
         public event OnTextChangeHandler OnTextChangeEvent;
 
-        public string address;
-        public int port;
+        public string address { get; set; }
+        public int port { get; set; }
 
         public Server(string address, int port){
             this.address = address;

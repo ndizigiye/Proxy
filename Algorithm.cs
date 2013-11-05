@@ -10,31 +10,31 @@ namespace Proxy
         public static int index = 0;
         public static string algorithmName = "roundRobin";
 
-        public static int RoundRobin()
+        public static int RoundRobin(int NumberOfAvailableServers)
         {
-            if(index == 3) index = 0;
+            if (index == NumberOfAvailableServers) index = 0;
             index += 1;
             return index;
         }
 
-        public static int Random()
+        public static int Random(int NumberOfAvailableServers)
         {
             Random rnd = new Random();
-            index = rnd.Next(1,4);
+            index = rnd.Next(1, NumberOfAvailableServers + 1);
             return index;
         }
 
-        public static int AlgorithmChooser()
+        public static int AlgorithmChooser(int NumberOfAvailableServers)
         {
             var AlgorithmValue = 0;
 
             switch (algorithmName)
             {
                 case "roundRobin":
-                    AlgorithmValue = RoundRobin();
+                    AlgorithmValue = RoundRobin(NumberOfAvailableServers);
                     break;
                 case "random":
-                    AlgorithmValue = Random();
+                    AlgorithmValue = Random(NumberOfAvailableServers);
                     break;
             }
             return AlgorithmValue;

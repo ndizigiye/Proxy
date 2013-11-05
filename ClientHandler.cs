@@ -52,15 +52,17 @@ namespace Proxy
         {
             bool recvRequest = true;
             const string requestEnd = "\r\n";
+            var clientIPAddress  = _client.RemoteEndPoint.ToString();
+            clientIPAddress = clientIPAddress.Split(':')[0].Trim();
+
 
             string requestPayload = "";
             string requestTempLine = "";
             var requestLines = new List<string>();
             var requestBuffer = new byte[1];
             var responseBuffer = new byte[1];
-            var responseHeaderFirstPart = "";
-            var responseHeaderSecondPart = "";
-            var responseLines = new List<string>();
+            var destIp = "";
+            var destPort = 0;
             
 
             requestLines.Clear();
@@ -105,29 +107,39 @@ namespace Proxy
                 }
 
                 var destServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                var portTest = 80 + Algorithm.AlgorithmChooser();
-                destServerSocket.Connect("localhost", portTest);
 
-                //State 2: Sending New Request Information to Destination Server and Relay Response to Client            
+                int NumberOfAvailableServers = HealthChecker.activeServers.Count;
+                var hash = Algorithm.AlgorithmChooser(NumberOfAvailableServers) - 1;
+                var server = HealthChecker.activeServers[hash];
+                destPort = server.port;
+                destIp = server.address;
+
+                if (Session.saveSession)
+                {
+                    if (!Session.sessionTable.ContainsKey(clientIPAddress))
+                    {
+                        Session.sessionTable.Add(clientIPAddress, destIp + ":" + destPort);
+                    }
+                    else if (Session.sessionTable.ContainsKey(clientIPAddress))
+                    {
+                        var destIpAndPort = Session.sessionTable[clientIPAddress];
+                        var destIpAndPortArray = destIpAndPort.Split(':');
+                        destIp = destIpAndPortArray[0];
+                        destPort = Convert.ToInt32(destIpAndPortArray[1]);
+                    }
+                }
+                destServerSocket.Connect(destIp, destPort);
+          
                 destServerSocket.Send(Encoding.ASCII.GetBytes(requestPayload));
-                //Console.WriteLine("Begin Receiving Response...");
+
                 while (destServerSocket.Receive(responseBuffer) != 0)
                 {
-                    var responseHeader = Encoding.ASCII.GetString(responseBuffer);
-
-                    if (responseHeader == "\r")
-                    {
-                        Debug.WriteLine("-----Ends with----");
-                    }
-                    var newResponseBuffer = responseBuffer;
-                    //newResponseBuffer = Encoding.ASCII.GetBytes(responseHeader);
-                    //Debug.Write("=="+responseHeader);
-                    _client.Send(newResponseBuffer);
+                    _client.Send(responseBuffer);
                 }
-                Debug.WriteLine(responseHeaderFirstPart + responseHeaderSecondPart);
-                Debug.WriteLine("finished============================================================");
                 destServerSocket.Disconnect(false);
                 destServerSocket.Dispose();
+            }
+            catch(SocketException){
                 _client.Disconnect(false);
                 _client.Dispose();
             }

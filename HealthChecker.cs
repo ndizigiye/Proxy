@@ -102,8 +102,8 @@ namespace Proxy
                     serverIsAlive = true;
                 }
 
-                destServerSocket.Disconnect(false);
-                destServerSocket.Dispose();
+                destServerSocket.Shutdown(SocketShutdown.Both);
+                destServerSocket.Close();
             }
             catch (SocketException e)
             {

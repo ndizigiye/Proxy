@@ -8,7 +8,7 @@ using System.Threading;
 using System.Windows.Forms;
 
 namespace Proxy
-{
+{//
     public delegate void OnTextChangeHandler(OnTextChange e);
 
     public class OnTextChange : EventArgs
@@ -32,9 +32,9 @@ namespace Proxy
         public event OnTextChangeHandler OnTextChangeEvent;
         private readonly Socket _client;
         public  Thread HandleClientThread;
-        private IPAddress _serverIp;
-        private string _host;
-        private string _getRequest;
+        //private IPAddress _serverIp;
+        //private string _host;
+        //private string _getRequest;
 
         public ClientHandler(Socket client, OnTextChangeHandler onTextChangeEvent)
         {
@@ -50,7 +50,7 @@ namespace Proxy
 
         public void Handle()
         {
-            bool recvRequest = true;
+            bool continueReceiving = true;
             const string requestEnd = "\r\n";
             var clientIPAddress  = _client.RemoteEndPoint.ToString();
             clientIPAddress = clientIPAddress.Split(':')[0].Trim();
@@ -70,7 +70,7 @@ namespace Proxy
             try
             {
                 //State 0: Handle Request from Client
-                while (recvRequest)
+                while (continueReceiving)
                 {
                     _client.Receive(requestBuffer);
                     string fromByte = Encoding.ASCII.GetString(requestBuffer);
@@ -85,13 +85,11 @@ namespace Proxy
 
                     if (requestPayload.EndsWith(requestEnd + requestEnd))
                     {
-                        recvRequest = false;
+                        continueReceiving = false;
                     }
                 }
                 OnTextChangeEvent(new OnTextChange("Raw request received"));
                 OnTextChangeEvent(new OnTextChange(requestPayload));
-
-                //State 1: Rebuilding Request Information and Create Connection to Destination Server
                 string remoteHost = requestLines[0].Split(' ')[1].Replace("http://", "").Split('/')[0];
                 int remotePort = 80;
                 if(remoteHost.Split(':')[0].Equals("localhost")){
@@ -134,96 +132,22 @@ namespace Proxy
 
                 while (destServerSocket.Receive(responseBuffer) != 0)
                 {
-                    _client.Send(responseBuffer);
+                    if (_client.Send(responseBuffer) == 0) break;
                 }
-                destServerSocket.Disconnect(false);
-                destServerSocket.Dispose();
+
+                destServerSocket.Shutdown(SocketShutdown.Both);
+                destServerSocket.Close();
+                _client.Shutdown(SocketShutdown.Both);
+                _client.Close();
             }
-            catch(SocketException){
-                _client.Disconnect(false);
-                _client.Dispose();
+            catch(SocketException e){
+                Debug.WriteLine(e.Message);
             }
             catch (Exception e)
             {
                 OnTextChangeEvent(new OnTextChange("Error occured: " + e.Message));
                 OnTextChangeEvent(new OnTextChange("Stack Trace: " + e.StackTrace));
             }
-        }
-
-        public void HandleClient()
-        {
-            var request = "";
-
-            while (true)
-            {
-                var buffer = new byte[1];
-                _client.Receive(buffer);
-                request += Encoding.ASCII.GetString(buffer);
-                if (request.IndexOf("\r\n\r\n", StringComparison.Ordinal) > -1 ||
-                    request.IndexOf("\n\n", StringComparison.Ordinal) > -1)
-                { 
-                    break;
-                }
-            }
-            GetServerIp(request);
-            OnTextChangeEvent(
-            new OnTextChange(String.Format("Request header received to {0}", _getRequest)));
-            HandleRequestInternal(request);
-        }
-
-        private void HandleRequest(string request)
-        {
-            var parameterizedThread = new ParameterizedThreadStart(HandleRequestInternal);
-            var handleRequestThread = new Thread(parameterizedThread);
-            handleRequestThread.Start(request);
-        }
-
-        private void HandleRequestInternal(object o)
-        {
-            var request = o as String;
-            var proxy = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            proxy.Connect(_serverIp, 80);
-            var receivedData = "";
-            proxy.Connect(_serverIp, 80);
-            var buffer = new byte[3000];
-            if (request != null)
-            {
-                var headerBuffer = Encoding.ASCII.GetBytes(request);
-                proxy.Send(headerBuffer);
-            }
-
-            while (proxy.Receive(buffer) != 0)
-            {
-                proxy.Receive(buffer);
-                receivedData += Encoding.ASCII.GetString(buffer);
-                if (_client.Send(buffer) == 0)
-                {
-                    break;
-                }
-               
-            }
-            OnTextChangeEvent(new OnTextChange("data received from server!!:"+ receivedData));
-            proxy.Disconnect(false);
-            proxy.Dispose();
-            _client.Disconnect(false);
-            _client.Dispose();
-            OnTextChangeEvent(new OnTextChange("finished sending data to client"));
-        }
-
-        private void GetServerIp(string request)
-        {
-            string[] lines = request.Split('\n');
-            _getRequest = lines[0];
-            foreach (var elem in lines)
-            {
-                var elemLines = elem.Split(':');
-                if (elemLines[0].ToLower().Trim().Equals("host"))
-                {
-                    _host = elemLines[1].Trim();
-                    //host = host.Replace("www", "");
-                }
-            }
-            _serverIp = Dns.GetHostAddresses(_host)[0];
         }
     }
 

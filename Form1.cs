@@ -45,6 +45,7 @@ namespace Proxy
             _hp.HandleClient();
             startProxy.Enabled = false;
             stopProxy.Enabled = true;
+            servers.Enabled = false;
         }
 
         private void stopProxy_Click(object sender, EventArgs e)
@@ -52,6 +53,7 @@ namespace Proxy
             _hp.Stop();
             startProxy.Enabled = true;
             stopProxy.Enabled = false;
+            servers.Enabled = true;
         }
 
         private void saveSession_CheckedChanged(object sender, EventArgs e)
